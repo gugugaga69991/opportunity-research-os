@@ -3,8 +3,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from arq import cron
-from arq.connections import RedisSettings
 from sqlalchemy import select
 
 from opportunity_api.collection.scheduling import next_scheduled_at
@@ -137,7 +135,7 @@ async def enqueue_pending_processing(context: dict[str, Any]) -> int:
             ).all()
         )
     for document in documents:
-        await context["redis"].enqueue_job("process_signal_document", str(document.id))
+        await context["queue"].enqueue_job("process_signal_document", str(document.id))
     return len(documents)
 
 
@@ -177,7 +175,7 @@ async def enqueue_pending_clustering(context: dict[str, Any]) -> int:
             ).all()
         )
     for signal in signals:
-        await context["redis"].enqueue_job("cluster_evidence_signal", str(signal.id))
+        await context["queue"].enqueue_job("cluster_evidence_signal", str(signal.id))
     return len(signals)
 
 
@@ -206,7 +204,7 @@ async def enqueue_pending_opportunities(context: dict[str, Any]) -> int:
             ).all()
         )
     for cluster in clusters:
-        await context["redis"].enqueue_job("generate_opportunity_hypothesis", str(cluster.id))
+        await context["queue"].enqueue_job("generate_opportunity_hypothesis", str(cluster.id))
     return len(clusters)
 
 
@@ -221,7 +219,7 @@ async def start_research_campaign(context: dict[str, Any], opportunity_id: str) 
             ).all()
         )
     for task in tasks:
-        await context["redis"].enqueue_job("dispatch_research_task_job", str(task.id))
+        await context["queue"].enqueue_job("dispatch_research_task_job", str(task.id))
     logger.info(
         "research_campaign_started",
         extra={"campaign_id": str(campaign.id), "opportunity_id": opportunity_id},
@@ -233,7 +231,7 @@ async def dispatch_research_task_job(context: dict[str, Any], task_id: str) -> s
     async with session_factory() as session:
         task, run = await dispatch_research_task(session, uuid.UUID(task_id), settings)
     if run and run.status.value == "queued":
-        await context["redis"].enqueue_job("launch_collection", str(run.id))
+        await context["queue"].enqueue_job("launch_collection", str(run.id))
     return str(task.id)
 
 
@@ -299,17 +297,15 @@ async def advance_research(context: dict[str, Any]) -> int:
                 ).all()
             )
     for opportunity in opportunities:
-        await context["redis"].enqueue_job("start_research_campaign", str(opportunity.id))
+        await context["queue"].enqueue_job("start_research_campaign", str(opportunity.id))
         enqueued += 1
     for task in analysis:
-        await context["redis"].enqueue_job("analyze_research_task_job", str(task.id))
+        await context["queue"].enqueue_job("analyze_research_task_job", str(task.id))
         enqueued += 1
     for task in configuration_tasks:
-        await context["redis"].enqueue_job("dispatch_research_task_job", str(task.id))
+        await context["queue"].enqueue_job("dispatch_research_task_job", str(task.id))
         enqueued += 1
     return enqueued
-
-
 async def reconcile_running_collections(_: dict[str, Any]) -> int:
     if not settings.apify_api_token:
         return 0
@@ -345,7 +341,7 @@ async def create_opportunity_decision(context: dict[str, Any], campaign_id: str)
     async with session_factory() as session:
         decision = await create_decision(session, uuid.UUID(campaign_id))
     if settings.openrouter_api_key:
-        await context["redis"].enqueue_job("analyze_opportunity_decision", str(decision.id))
+        await context["queue"].enqueue_job("analyze_opportunity_decision", str(decision.id))
     logger.info(
         "opportunity_decision_created",
         extra={"decision_id": str(decision.id), "campaign_id": campaign_id},
@@ -391,14 +387,15 @@ async def advance_decisions(context: dict[str, Any]) -> int:
             else []
         )
     for campaign in campaigns:
-        await context["redis"].enqueue_job("create_opportunity_decision", str(campaign.id))
+        await context["queue"].enqueue_job("create_opportunity_decision", str(campaign.id))
         enqueued += 1
     for decision in pending:
-        await context["redis"].enqueue_job("analyze_opportunity_decision", str(decision.id))
+        await context["queue"].enqueue_job("analyze_opportunity_decision", str(decision.id))
         enqueued += 1
     return enqueued
 
 
+# Queue and scheduled handler discovery is centralized in opportunity_api.jobs.
 async def create_real_world_validation(_: dict[str, Any], decision_id: str) -> str:
     async with session_factory() as session:
         campaign = await create_validation_campaign(session, uuid.UUID(decision_id), settings)
@@ -423,7 +420,7 @@ async def advance_validation(context: dict[str, Any]) -> int:
             ).all()
         )
     for decision in decisions:
-        await context["redis"].enqueue_job("create_real_world_validation", str(decision.id))
+        await context["queue"].enqueue_job("create_real_world_validation", str(decision.id))
     return len(decisions)
 
 
@@ -468,7 +465,7 @@ async def refresh_portfolio_freshness(context: dict[str, Any]) -> int:
                     ).all()
                 )
                 for task in tasks:
-                    await context["redis"].enqueue_job("dispatch_research_task_job", str(task.id))
+                    await context["queue"].enqueue_job("dispatch_research_task_job", str(task.id))
                     enqueued += 1
     return enqueued
 
@@ -509,7 +506,7 @@ async def enqueue_due_sources(context: dict[str, Any]) -> int:
                 input_overrides=schedule.input_overrides,
                 trigger_type=TriggerType.schedule,
             )
-            await context["redis"].enqueue_job("launch_collection", str(run.id))
+            await context["queue"].enqueue_job("launch_collection", str(run.id))
             schedule.last_enqueued_at = now
             schedule.next_run_at = next_scheduled_at(
                 schedule.cron_expression, schedule.timezone, now
@@ -517,41 +514,3 @@ async def enqueue_due_sources(context: dict[str, Any]) -> int:
             enqueued += 1
         await session.commit()
     return enqueued
-
-
-async def startup(_: dict[str, Any]) -> None:
-    logger.info("worker_started", extra={"environment": settings.app_env})
-
-
-class WorkerSettings:
-    functions = [
-        system_ping,
-        launch_collection,
-        process_apify_webhook,
-        process_signal_document,
-        cluster_evidence_signal,
-        generate_opportunity_hypothesis,
-        start_research_campaign,
-        dispatch_research_task_job,
-        analyze_research_task_job,
-        create_opportunity_decision,
-        analyze_opportunity_decision,
-        create_real_world_validation,
-    ]
-    cron_jobs = [
-        cron(enqueue_due_sources, second={0}),
-        cron(enqueue_pending_processing, second={10, 40}),
-        cron(reconcile_running_collections, second={15, 45}),
-        cron(enqueue_pending_clustering, second={20, 50}),
-        cron(enqueue_pending_opportunities, second={25, 55}),
-        cron(advance_research, second={30}),
-        cron(advance_decisions, second={35}),
-        cron(advance_validation, second={38}),
-        cron(refresh_portfolio_freshness, minute={5, 35}, second={0}),
-        cron(monitor_portfolio, minute={15, 45}, second={0}),
-    ]
-    on_startup = startup
-    redis_settings = RedisSettings.from_dsn(settings.redis_url)
-    max_jobs = 10
-    max_tries = 3
-    job_timeout = 600

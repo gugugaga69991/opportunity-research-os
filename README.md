@@ -7,7 +7,7 @@ An evidence-first research operating system for discovering recurring SaaS oppor
 - Next.js dashboard
 - FastAPI application API
 - PostgreSQL with pgvector
-- Redis and ARQ background workers
+- Durable PostgreSQL job queue with bounded batch runners
 - OpenRouter model gateway
 - Apify collection gateway
 - Docker Compose local environment
@@ -25,7 +25,7 @@ The API runs database migrations automatically at startup. OpenRouter and Apify 
 
 ```text
 apps/web       Dashboard and research control center
-apps/api       API, database models, integrations, and worker
+apps/api       API, database models, integrations, and batch runner
 infra          Deployment notes and future infrastructure definitions
 ```
 
@@ -36,6 +36,7 @@ npm run dev:web
 npm run build:web
 docker compose up --build
 docker compose down
+docker compose --profile jobs run --rm jobs
 ```
 
 Never commit `.env` or API keys.
@@ -68,7 +69,7 @@ Actor runs are asynchronous. Completion webhooks trigger paginated dataset retri
 
 ## Signal processing layer
 
-Step 3 turns raw evidence into traceable research signals. The worker automatically:
+Step 3 turns raw evidence into traceable research signals. The batch runner automatically:
 
 1. Normalizes text and detects its language.
 2. Removes exact and near duplicates using SHA-256 and SimHash before spending on AI.
@@ -145,7 +146,7 @@ Step 6 opens a five-lane research campaign for every evidence-gated opportunity:
 - Contradiction actively searches for reasons to reject the opportunity.
 
 Each lane receives deterministic search queries and a bounded Apify collection contract. The
-worker collects source documents, sends only those documents to a lane-specific strict OpenRouter
+batch runner collects source documents, sends only those documents to a lane-specific strict OpenRouter
 schema, verifies every cited quote against the stored source text, and materializes versioned
 findings and competitor profiles. A campaign passes the research gate only when every required
 lane completes, overall and per-lane coverage thresholds pass, and the contradiction lane does not

@@ -17,16 +17,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   api:
     build:
       context: ./apps/api
@@ -38,22 +28,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     command: ["sh", "-c", "alembic upgrade head && uvicorn opportunity_api.main:app --host 0.0.0.0 --port 8000 --reload"]
 
-  worker:
+  jobs:
     build:
       context: ./apps/api
+    profiles: ["jobs"]
     env_file: .env
     volumes:
       - ./apps/api:/app
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["arq", "opportunity_api.worker.WorkerSettings"]
+    command: ["sh", "-c", "alembic upgrade head && python -m opportunity_api.jobs --max-jobs 200"]
 
   web:
     build:

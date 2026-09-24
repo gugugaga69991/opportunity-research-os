@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:3000"
     database_url: str = "postgresql+asyncpg://opportunity:opportunity@localhost:5432/opportunity_os"
-    redis_url: str = "redis://localhost:6379/0"
     openrouter_api_key: str = Field(default="", repr=False)
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_default_model: str = "openai/gpt-4.1-mini"
-    openrouter_fallback_models: str = "google/gemini-2.5-flash,anthropic/claude-3.5-haiku"
+    openrouter_fallback_models: str = "google/gemini-2.5-flash,anthropic/claude-haiku-4.5"
+    job_lease_seconds: int = 900
+    job_max_attempts: int = 3
     openrouter_embedding_model: str = "openai/text-embedding-3-small"
     embedding_dimensions: int = 1536
     near_duplicate_hamming_threshold: int = 3
