@@ -12,5 +12,5 @@ Local development uses Docker Compose. The production target remains cloud-neutr
 - Vercel serves the Next.js control center using the root `vercel.json`.
 - Render serves FastAPI using the root `render.yaml`; sleeping between requests is expected.
 - Neon provides PostgreSQL and pgvector through `DATABASE_URL`.
-- GitHub Actions runs the bounded research cycle every six hours.
+- GitHub Actions runs the bounded research cycle manually during setup, then every six hours after the hosted secrets are configured.
 - Apify schedules and executes collection actors independently of the local computer.

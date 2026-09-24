@@ -1,6 +1,7 @@
 from functools import lru_cache
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,6 +61,27 @@ class Settings(BaseSettings):
     apify_search_discovery_actor_id: str = "apify/google-search-scraper"
     apify_webhook_secret: str = Field(default="change-me", repr=False)
     apify_webhook_url: str = ""
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        """Accept the standard connection URL emitted by hosted Postgres providers."""
+        if not isinstance(value, str):
+            return value
+
+        normalized = value
+        if normalized.startswith("postgres://"):
+            normalized = normalized.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif normalized.startswith("postgresql://"):
+            normalized = normalized.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        parts = urlsplit(normalized)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        sslmode = query.pop("sslmode", None)
+        query.pop("channel_binding", None)
+        if sslmode and "ssl" not in query:
+            query["ssl"] = sslmode
+        return urlunsplit(parts._replace(query=urlencode(query)))
 
     @property
     def model_route(self) -> list[str]:

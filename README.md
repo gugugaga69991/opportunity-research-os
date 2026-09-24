@@ -48,7 +48,7 @@ The production-shaped free-tier deployment is already described in code:
 - `vercel.json` builds and serves the Next.js control center.
 - `render.yaml` runs FastAPI and database migrations on Render.
 - Neon supplies PostgreSQL and pgvector through `DATABASE_URL`.
-- `.github/workflows/research-cycle.yml` wakes every six hours, schedules due research, and drains a bounded PostgreSQL job batch.
+- `.github/workflows/research-cycle.yml` schedules due research and drains a bounded PostgreSQL job batch. It remains manual until the hosted database and repository secrets are configured; the six-hour schedule is enabled after deployment.
 - Apify runs collectors independently of the local computer.
 
 The API and dashboard can sleep between requests. Collection and research do not depend on this PC staying on.
