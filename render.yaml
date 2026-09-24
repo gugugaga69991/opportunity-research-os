@@ -3,6 +3,7 @@ services:
     name: opportunity-research-api
     runtime: python
     plan: free
+    region: virginia
     rootDir: apps/api
     buildCommand: pip install .
     startCommand: alembic upgrade head && uvicorn opportunity_api.main:app --host 0.0.0.0 --port $PORT
