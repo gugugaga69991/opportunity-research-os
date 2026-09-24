@@ -1,0 +1,85 @@
+{
+  "title": "Opportunity OS Web Signal Collector",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "mode": {
+      "title": "Collection mode",
+      "type": "string",
+      "description": "Read feeds, extract pages, or discover and extract pages from search queries.",
+      "enum": ["rss", "pages", "search"],
+      "default": "pages",
+      "editor": "select"
+    },
+    "startUrls": {
+      "title": "Starting URLs",
+      "type": "array",
+      "description": "Public pages or feeds approved for collection.",
+      "editor": "requestListSources",
+      "prefill": [{"url": "https://example.com/feed.xml"}]
+    },
+    "searchQueries": {
+      "title": "Search queries",
+      "type": "array",
+      "description": "Bounded public-web discovery queries used in search mode.",
+      "editor": "stringList"
+    },
+    "discoveryActorId": {
+      "title": "Search discovery Actor ID",
+      "type": "string",
+      "description": "Apify Actor used only to discover result URLs.",
+      "default": "apify/google-search-scraper"
+    },
+    "maxResultsPerQuery": {
+      "title": "Maximum results per query",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 8
+    },
+    "documentType": {
+      "title": "Document type",
+      "type": "string",
+      "default": "web_document",
+      "editor": "textfield"
+    },
+    "selectors": {
+      "title": "Optional CSS selectors",
+      "type": "object",
+      "description": "Keys may include title, content, author, publishedAt, and canonicalUrl.",
+      "editor": "json"
+    },
+    "maxItems": {
+      "title": "Maximum items",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000,
+      "default": 500
+    },
+    "maxConcurrency": {
+      "title": "Maximum concurrency",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 25,
+      "default": 5
+    },
+    "requestTimeoutSecs": {
+      "title": "Request timeout",
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 120,
+      "default": 30
+    },
+    "respectRobots": {
+      "title": "Respect robots.txt",
+      "type": "boolean",
+      "default": true
+    },
+    "userAgent": {
+      "title": "User agent",
+      "type": "string",
+      "default": "OpportunityResearchOS/0.1 (+internal-research)"
+    }
+  },
+  "required": ["mode", "documentType"]
+}

@@ -1,0 +1,26 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "external_id": {"type": "string"},
+    "source_url": {"type": "string"},
+    "canonical_url": {"type": "string"},
+    "title": {"type": "string"},
+    "author": {"type": "string"},
+    "published_at": {"type": "string"},
+    "language": {"type": "string"},
+    "raw_text": {"type": "string"},
+    "metadata": {"type": "object"}
+  },
+  "views": {
+    "overview": {
+      "title": "Collected signals",
+      "transformation": {
+        "fields": ["title", "source_url", "published_at", "author"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {}
+      }
+    }
+  }
+}

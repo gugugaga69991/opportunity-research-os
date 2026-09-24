@@ -1,0 +1,77 @@
+name: opportunity-os
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: opportunity_os
+      POSTGRES_USER: opportunity
+      POSTGRES_PASSWORD: opportunity
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opportunity -d opportunity_os"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && uvicorn opportunity_api.main:app --host 0.0.0.0 --port 8000 --reload"]
+
+  worker:
+    build:
+      context: ./apps/api
+    env_file: .env
+    volumes:
+      - ./apps/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["arq", "opportunity_api.worker.WorkerSettings"]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/workspace/apps/web
+      - /workspace/node_modules
+      - /workspace/apps/web/node_modules
+    depends_on:
+      - api
+    command: ["npm", "run", "dev:web", "--", "--hostname", "0.0.0.0"]
+
+volumes:
+  postgres_data:

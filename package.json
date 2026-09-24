@@ -1,0 +1,16 @@
+{
+  "name": "opportunity-research-os",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace apps/web",
+    "build:web": "npm run build --workspace apps/web",
+    "lint:web": "npm run lint --workspace apps/web",
+    "typecheck:web": "npm run typecheck --workspace apps/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
+

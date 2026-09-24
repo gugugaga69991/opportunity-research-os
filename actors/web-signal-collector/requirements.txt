@@ -1,0 +1,4 @@
+apify>=3.0,<4
+beautifulsoup4>=4.13,<5
+feedparser>=6.0,<7
+httpx>=0.28,<1

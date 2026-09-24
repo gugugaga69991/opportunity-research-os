@@ -1,0 +1,13 @@
+{
+  "actorSpecification": 1,
+  "name": "opportunity-web-signal-collector",
+  "title": "Opportunity OS Web Signal Collector",
+  "version": "0.1",
+  "build": {
+    "dockerfile": "../Dockerfile"
+  },
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  }
+}
