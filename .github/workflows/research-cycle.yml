@@ -1,8 +1,8 @@
 name: Research cycle
 
 on:
-  schedule:
-    - cron: "17 */6 * * *"
+  # Keep this manual until the hosted database and repository secrets are configured.
+  # Re-enable the six-hour schedule after deployment setup is complete.
   workflow_dispatch:
 
 concurrency:
